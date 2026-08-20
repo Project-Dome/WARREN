@@ -1,0 +1,39 @@
+<!--
+Template de deployment de script.
+Arquivo: src/Objects/customscript_ds_mvb_vendor-bill_cl.xml
+
+Tag raiz e sufixo conforme o tipo (ver references/naming.md):
+  clientscript cl | usereventscript ue | scheduledscript ss | mapreducescript mr
+  suitelet sl | restlet rl
+
+Audiência: allemployees/allpartners/allroles sempre T, audslctrole vazio. Não perguntar.
+Status: TESTING por padrão em script novo; perguntar se o usuário quer RELEASED.
+
+Um <scriptdeployment> por contexto. Com múltiplos, sufixe o scriptid (_customer, _vendor)
+e acrescente "- {contexto}" ao <title>.
+
+User Event e Client Script usam <recordtype>. Só RESTlet usa <postfunction>/<getfunction>/etc.
+-->
+<clientscript scriptid="customscript_ds_mvb_vendor_bill_cl">
+  <description>Bloqueia o salvamento de Vendor Bill cujo valor ultrapasse 20% do valor da PO de origem</description>
+  <isinactive>F</isinactive>
+  <name>Vendor Bill PO Limit Check (Client)</name>
+  <notifyadmins>F</notifyadmins>
+  <notifyemails></notifyemails>
+  <notifyowner>T</notifyowner>
+  <notifyuser>F</notifyuser>
+  <scriptfile>[/SuiteScripts/project_dome/ds_manage_vendor_bill/ds_mvb_client/ds-mvb-vendor-bill.client.js]</scriptfile>
+  <scriptdeployments>
+    <scriptdeployment scriptid="customdeploy_ds_mvb_vendor_bill_cl">
+      <allemployees>T</allemployees>
+      <allpartners>T</allpartners>
+      <allroles>T</allroles>
+      <audslctrole></audslctrole>
+      <isdeployed>T</isdeployed>
+      <loglevel>DEBUG</loglevel>
+      <recordtype>VENDOR_BILL</recordtype>
+      <status>TESTING</status>
+      <title>Vendor Bill PO Limit Check (Client)</title>
+    </scriptdeployment>
+  </scriptdeployments>
+</clientscript>
