@@ -1,0 +1,24 @@
+{
+    "paths": {
+        "pd/map_reduce": "/SuiteScripts/dev_suitecode/pd_c_netsuite_tools/pd_cnt_standard/pd-cnts-map-reduce.util.js",
+        "pd/userevent": "/SuiteScripts/dev_suitecode/pd_c_netsuite_tools/pd_cnt_standard/pd-cnts-userevent.util.js",
+        "pd/portlet": "/SuiteScripts/dev_suitecode/pd_c_netsuite_tools/pd_cnt_standard/pd-cnts-portlet.util.js",
+        "pd/search": "/SuiteScripts/dev_suitecode/pd_c_netsuite_tools/pd_cnt_standard/pd-cnts-search.util.js",
+        "pd/record": "/SuiteScripts/dev_suitecode/pd_c_netsuite_tools/pd_cnt_standard/pd-cnts-record.util.js",
+        "pd/restlet": "/SuiteScripts/dev_suitecode/pd_c_netsuite_tools/pd_cnt_standard/pd-cnts-restlet.util.js",
+        "pd/suitelet": "/SuiteScripts/dev_suitecode/pd_c_netsuite_tools/pd_cnt_standard/pd-cnts-suitelet.util.js",
+        "pd/date": "/SuiteScripts/dev_suitecode/pd_c_netsuite_tools/pd_cnt_standard/pd-cnts-date.util.js",
+        "pd/file": "/SuiteScripts/dev_suitecode/pd_c_netsuite_tools/pd_cnt_standard/pd-cnts-file.util.js",
+        "pd/xml": "/SuiteScripts/dev_suitecode/pd_c_netsuite_tools/pd_cnt_standard/pd-cnts-xml.util.js",
+        "pd/cache": "/SuiteScripts/dev_suitecode/pd_c_netsuite_tools/pd_cnt_standard/pd-cnts-cache.util.js",
+
+        "pd/common": "/SuiteScripts/dev_suitecode/pd_c_netsuite_tools/pd_cnt_common/pd-cntc-common.util.js",
+        "pd/common_validation": "/SuiteScripts/dev_suitecode/pd_c_netsuite_tools/pd_cnt_common/pd-cntc-common-validation.util",
+        "pd/exception": "/SuiteScripts/dev_suitecode/pd_c_netsuite_tools/pd_cnt_standard/pd-cnts-exception.util.js"
+    },
+    "shim":{
+        "pd/common": { "exports": "*" },
+        "pd/common_validation": { "exports": "*" },
+        "pd/exception": { "exports": "*" }
+    }
+}
