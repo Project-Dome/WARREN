@@ -24,11 +24,12 @@ independente por fatura, sem alterar os registros originais vinculados ao PO.
 **Contexto de execução:** roda apenas em `context.type === CREATE`. Ignorado em qualquer
 outro evento (`EDIT`, `DELETE`, etc.).
 
-**Identificação do PO de origem:** lida a partir do campo nativo `createdfrom` da Vendor
-Bill recém-criada. Cenário sempre 1 PO por fatura — Vendor Bill originada da sublist nativa
-`purchaseorders` (matching com múltiplos POs) está fora de escopo, pois não ocorre no fluxo
-atual do Warren. Se `createdfrom` estiver vazio ou não apontar para uma Purchase Order, o
-script **não faz nada** (fatura sem PO de origem, fora de escopo desta regra).
+**Identificação do PO de origem:** lida a partir do sublist nativo `purchaseorders` da
+Vendor Bill recém-criada (campo `id` da primeira linha). Cenário observado sempre 1 PO por
+fatura (sublist com uma única linha). O campo nativo `createdfrom` é usado apenas como
+fallback defensivo, caso o sublist `purchaseorders` esteja vazio. Se nenhuma das duas
+fontes apontar para uma Purchase Order, o script **não faz nada** (fatura sem PO de
+origem, fora de escopo desta regra).
 
 **Busca dos registros de origem:** todos os registros de `customrecord_wr_installment_prevision`
 cujo campo `custrecord_wr_ip_transaction_ls` seja igual ao PO identificado. Se a busca não
@@ -65,8 +66,9 @@ falha isolada não interrompe o processamento das demais cópias nem afeta a Ven
 salva (o `afterSubmit` roda após o commit da transação).
 
 **Fora de escopo:**
-- Vendor Bill originada de múltiplos POs simultaneamente (sublist nativa `purchaseorders`)
-  — no fluxo atual do Warren, Vendor Bill sempre deriva de um único PO via `createdfrom`.
+- Vendor Bill originada de múltiplos POs simultaneamente (sublist nativo `purchaseorders`
+  com mais de uma linha) — no fluxo atual do Warren, o sublist sempre tem uma única linha;
+  múltiplos POs numa mesma fatura não são tratados por esta regra.
 - Deduplicação de cópias entre faturamentos parciais do mesmo PO.
 - Alteração do registro original de previsão (vinculado ao PO) — a cópia nunca escreve no
   registro de origem.

@@ -33,7 +33,7 @@ define([
 
         logPurchaseOrderSublistsForDebug(vendorBill); // TEMPORARIO / DEBUG
 
-        const purchaseOrderId = vendorBill.getValue({ fieldId: 'createdfrom' });
+        const purchaseOrderId = resolveSourcePurchaseOrderId(vendorBill);
 
         if (isNullOrEmpty(purchaseOrderId)) return;
 
@@ -41,6 +41,30 @@ define([
             purchaseOrderId: purchaseOrderId,
             vendorBillId: vendorBill.id,
         });
+    }
+
+    // ATENÇÃO — diverge do TECH-SPEC.md 1.1 ("Identificação do PO de origem: lida a
+    // partir do campo nativo createdfrom"). Confirmado por teste em 2026-08-24: a Vendor
+    // Bill real não traz `createdfrom` preenchido; o PO de origem está no sublist nativo
+    // `purchaseorders` (campo `id`), que também bate com `orderdoc` do sublist `item`.
+    // `createdfrom` mantido como fallback defensivo. TECH-SPEC/MANIFEST ainda precisam
+    // ser atualizados para refletir isso como comportamento definitivo.
+    function resolveSourcePurchaseOrderId(vendorBill) {
+        const poLineCount = safeGetLineCount(vendorBill, 'purchaseorders');
+
+        if (poLineCount > 1) {
+            log.audit({
+                title: 'InstallmentPrevisionCopy | resolveSourcePurchaseOrderId - múltiplos POs no sublist purchaseorders',
+                details: JSON.stringify({ vendorBillId: vendorBill.id, poLineCount: poLineCount }),
+            });
+        }
+
+        if (poLineCount > 0) {
+            const idFromSublist = vendorBill.getSublistValue({ sublistId: 'purchaseorders', fieldId: 'id', line: 0 });
+            if (!isNullOrEmpty(idFromSublist)) return idFromSublist;
+        }
+
+        return vendorBill.getValue({ fieldId: 'createdfrom' });
     }
 
     // TEMPORARIO / DEBUG — loga o sublist `purchaseorders` e a coluna `orderdoc` do
