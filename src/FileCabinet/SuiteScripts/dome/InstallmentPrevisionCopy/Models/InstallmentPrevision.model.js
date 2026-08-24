@@ -11,9 +11,11 @@
  */
 define([
     'N/log',
+
+
     'N/record',
-    'pd/record',
-    'pd/search',
+    '../../NetsuiteTools/pd_cnt_standard/pd-cnts-record.util',
+    '../../NetsuiteTools/pd_cnt_standard/pd-cnts-search.util',
 ], function (log, record, record_util, search_util) {
 
     const TYPE = 'customrecord_wr_installment_prevision';

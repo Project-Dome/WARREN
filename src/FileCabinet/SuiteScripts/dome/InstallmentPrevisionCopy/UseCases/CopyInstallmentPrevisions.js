@@ -15,7 +15,7 @@
  */
 define([
     'N/log',
-    'pd/search',
+    '../../NetsuiteTools/pd_cnt_standard/pd-cnts-search.util',
     '../Models/InstallmentPrevision.model',
 ], function (log, search_util, InstallmentPrevisionModel) {
 
