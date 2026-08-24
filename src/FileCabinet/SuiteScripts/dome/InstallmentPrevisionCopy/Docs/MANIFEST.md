@@ -1,7 +1,7 @@
 # Project Manifest: pd_ipc — Cópia de Previsão de Parcelas na Vendor Bill
 
 **Cliente:** Warren
-**Gerado em:** 2026-08-21
+**Gerado em:** 2026-08-24
 **Gerado por:** manifest-builder
 
 ---
@@ -10,7 +10,7 @@
 
 | Script ID | Arquivo | Tipo | Record Alvo | Descrição |
 |---|---|---|---|---|
-| `customscript_pd_ipc_vendor_bill_ue`* | `EntryPoints/InstallmentPrevisionCopy.UE.js` | UserEvent | `vendorbill` | Copia os registros de `customrecord_wr_installment_prevision` do PO de origem (`createdfrom`) para a Vendor Bill recém-criada, na criação da Vendor Bill |
+| `customscript_pd_ipc_vendor_bill_ue`* | `EntryPoints/InstallmentPrevisionCopy.UE.js` | UserEvent | `vendorbill` | Copia os registros de `customrecord_wr_installment_prevision` do PO de origem — identificado pelo sublist nativo `purchaseorders` (campo `id`, primeira linha), com `createdfrom` como fallback defensivo — para a Vendor Bill recém-criada, na criação da Vendor Bill |
 
 > \* Script ID inferido a partir do nome do arquivo (script ainda não implementado nem deployado — fase de design). Confirmar/gerar o ID real no ambiente NetSuite na implementação.
 
