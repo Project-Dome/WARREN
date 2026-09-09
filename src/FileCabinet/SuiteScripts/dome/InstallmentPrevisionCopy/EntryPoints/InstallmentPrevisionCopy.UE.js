@@ -3,122 +3,54 @@
  * @NScriptType UserEventScript
  * @author ProjectDome
  * @description Vendor Bill (afterSubmit, CREATE) — copia as previsões de parcela
- * (customrecord_wr_installment_prevision) do PO de origem (campo nativo createdfrom)
- * para a Vendor Bill recém-criada. Docs/TECH-SPEC.md, seção 1.1.
+ * (customrecord_wr_installment_prevision) da(s) PO(s) de origem para a Vendor Bill
+ * recém-criada. Docs/TECH-SPEC.md, seção 1.1.
  *
  * Script ID / deployment: ver Docs/MANIFEST.md — customscript_pd_ipc_vendor_bill_ue é
  * inferido do nome do arquivo (fase de design, ainda sem deploy). Confirmar/gerar o ID
  * real no ambiente NetSuite ao criar o registro de script.
  */
 define([
-    'N/log',
     '../UseCases/CopyInstallmentPrevisions',
-], function (log, CopyInstallmentPrevisions) {
-
-    // TEMPORARIO / DEBUG — remover antes de considerar este script pronto para produção.
-    // Motivo: no ambiente real, a Vendor Bill não está vindo com `createdfrom` preenchido;
-    // a ligação com o PO parece vir do sublist nativo `purchaseorders` e/ou da coluna
-    // `orderdoc` do sublist `item`. Isso contraria o TECH-SPEC.md (seção 1.1), que assume
-    // `createdfrom` como identificação única do PO e marca o sublist `purchaseorders`
-    // como fora de escopo — precisa ser revisado com o usuário antes de virar definitivo.
-    const TEMP_ENABLE_EDIT_FOR_TESTING = true;
+], function (CopyInstallmentPrevisions) {
 
     function afterSubmit(context) {
-        const isCreate = context.type === context.UserEventType.CREATE;
-        const isEditForTesting = TEMP_ENABLE_EDIT_FOR_TESTING && context.type === context.UserEventType.EDIT;
-
-        if (!isCreate && !isEditForTesting) return;
+        if (context.type !== context.UserEventType.CREATE) return;
 
         const vendorBill = context.newRecord;
+        const purchaseOrderIds = resolveSourcePurchaseOrderIds(vendorBill);
 
-        logPurchaseOrderSublistsForDebug(vendorBill); // TEMPORARIO / DEBUG
-
-        const purchaseOrderId = resolveSourcePurchaseOrderId(vendorBill);
-
-        if (isNullOrEmpty(purchaseOrderId)) return;
+        if (isNullOrEmpty(purchaseOrderIds)) return;
 
         CopyInstallmentPrevisions.execute({
-            purchaseOrderId: purchaseOrderId,
+            purchaseOrderIds: purchaseOrderIds,
             vendorBillId: vendorBill.id,
         });
     }
 
-    // ATENÇÃO — diverge do TECH-SPEC.md 1.1 ("Identificação do PO de origem: lida a
-    // partir do campo nativo createdfrom"). Confirmado por teste em 2026-08-24: a Vendor
-    // Bill real não traz `createdfrom` preenchido; o PO de origem está no sublist nativo
-    // `purchaseorders` (campo `id`), que também bate com `orderdoc` do sublist `item`.
-    // `createdfrom` mantido como fallback defensivo. TECH-SPEC/MANIFEST ainda precisam
-    // ser atualizados para refletir isso como comportamento definitivo.
-    function resolveSourcePurchaseOrderId(vendorBill) {
+    // Docs/TECH-SPEC.md, seção 1.1 "Identificação do(s) PO(s) de origem": lê todas as
+    // linhas do sublist nativo purchaseorders (uma Vendor Bill pode ter mais de uma PO).
+    // createdfrom é fallback defensivo, usado apenas quando o sublist está vazio.
+    function resolveSourcePurchaseOrderIds(vendorBill) {
         const poLineCount = safeGetLineCount(vendorBill, 'purchaseorders');
+        const ids = [];
 
-        if (poLineCount > 1) {
-            log.audit({
-                title: 'InstallmentPrevisionCopy | resolveSourcePurchaseOrderId - múltiplos POs no sublist purchaseorders',
-                details: JSON.stringify({ vendorBillId: vendorBill.id, poLineCount: poLineCount }),
-            });
+        for (let line = 0; line < poLineCount; line++) {
+            const id = vendorBill.getSublistValue({ sublistId: 'purchaseorders', fieldId: 'id', line: line });
+            if (!isNullOrEmpty(id)) ids.push(id);
         }
 
-        if (poLineCount > 0) {
-            const idFromSublist = vendorBill.getSublistValue({ sublistId: 'purchaseorders', fieldId: 'id', line: 0 });
-            if (!isNullOrEmpty(idFromSublist)) return idFromSublist;
-        }
+        if (!isNullOrEmpty(ids)) return ids;
 
-        return vendorBill.getValue({ fieldId: 'createdfrom' });
-    }
-
-    // TEMPORARIO / DEBUG — loga o sublist `purchaseorders` e a coluna `orderdoc` do
-    // sublist `item` para descobrir como identificar o(s) PO(s) de origem quando
-    // `createdfrom` está vazio. Remover junto com TEMP_ENABLE_EDIT_FOR_TESTING.
-    function logPurchaseOrderSublistsForDebug(vendorBill) {
-        const poLineCount = safeGetLineCount(vendorBill, 'purchaseorders');
-        const poCandidateFields = ['id', 'internalid', 'apply', 'tranid', 'total', 'amountremaining'];
-        const poLines = [];
-        for (let i = 0; i < poLineCount; i++) {
-            const poLine = { line: i };
-            poCandidateFields.forEach(function (fieldId) {
-                poLine[fieldId] = safeGetSublistValue(vendorBill, 'purchaseorders', fieldId, i);
-            });
-            poLines.push(poLine);
-        }
-
-        const itemLineCount = safeGetLineCount(vendorBill, 'item');
-        const itemOrderDocs = [];
-        for (let j = 0; j < itemLineCount; j++) {
-            itemOrderDocs.push({
-                line: j,
-                item: safeGetSublistValue(vendorBill, 'item', 'item', j),
-                orderdoc: safeGetSublistValue(vendorBill, 'item', 'orderdoc', j),
-                orderline: safeGetSublistValue(vendorBill, 'item', 'orderline', j),
-            });
-        }
-
-        log.debug({
-            title: 'InstallmentPrevisionCopy | DEBUG TEMPORARIO - purchaseorders / orderdoc',
-            details: JSON.stringify({
-                vendorBillId: vendorBill.id,
-                createdfrom: vendorBill.getValue({ fieldId: 'createdfrom' }),
-                poLineCount: poLineCount,
-                poLines: poLines,
-                itemLineCount: itemLineCount,
-                itemOrderDocs: itemOrderDocs,
-            }),
-        });
+        const createdFromId = vendorBill.getValue({ fieldId: 'createdfrom' });
+        return isNullOrEmpty(createdFromId) ? [] : [createdFromId];
     }
 
     function safeGetLineCount(record, sublistId) {
         try {
             return record.getLineCount({ sublistId: sublistId });
         } catch (e) {
-            return -1; // sublist não existe nesse record/contexto
-        }
-    }
-
-    function safeGetSublistValue(record, sublistId, fieldId, line) {
-        try {
-            return record.getSublistValue({ sublistId: sublistId, fieldId: fieldId, line: line });
-        } catch (e) {
-            return '<erro: ' + ((e && e.message) || e) + '>';
+            return 0; // sublist não existe nesse record/contexto
         }
     }
 

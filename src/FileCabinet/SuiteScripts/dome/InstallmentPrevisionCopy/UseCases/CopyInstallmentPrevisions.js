@@ -2,12 +2,15 @@
  * @NApiVersion 2.1
  * @NModuleScope public
  * @description Use case: copia as previsões de parcela
- * (customrecord_wr_installment_prevision) do PO de origem de uma Vendor Bill
+ * (customrecord_wr_installment_prevision) da(s) PO(s) de origem de uma Vendor Bill
  * recém-criada, gerando uma cópia própria por fatura — Docs/TECH-SPEC.md, seção 1.1.
  *
  * Regras aplicadas aqui:
- * - Só copia se a transação de origem (createdfrom) for de fato uma Purchase Order.
- * - Se não houver previsões vinculadas ao PO, não faz nada.
+ * - Uma Vendor Bill pode ter mais de uma PO de origem; cada uma é processada
+ *   individualmente e o resultado final é a união das previsões de todas as POs.
+ * - Só copia previsões de transações que sejam de fato uma Purchase Order (blinda o
+ *   fallback via createdfrom, que pode não apontar para uma PO).
+ * - Se não houver previsões vinculadas a nenhuma PO, não faz nada.
  * - Cópia por linha, best-effort: falha em uma previsão é logada e não interrompe
  *   as demais (Docs/TECH-SPEC.md, "Tratamento de erro").
  * - Sem deduplicação entre faturamentos parciais do mesmo PO — comportamento intencional.
@@ -23,18 +26,19 @@ define([
 
     /**
      * @param {Object} params
-     * @param {string|number} params.purchaseOrderId id lido do campo nativo createdfrom
+     * @param {Array<string|number>} params.purchaseOrderIds ids identificados no sublist
+     * purchaseorders da Vendor Bill (ou createdfrom como fallback)
      * @param {string|number} params.vendorBillId id da Vendor Bill recém-criada
      */
     function execute(params) {
-        const purchaseOrderId = params.purchaseOrderId;
+        const purchaseOrderIds = params.purchaseOrderIds;
         const vendorBillId = params.vendorBillId;
 
-        if (!isPurchaseOrder(purchaseOrderId)) {
-            return;
-        }
-
-        const sourceRows = InstallmentPrevisionModel.getByTransactionId(purchaseOrderId);
+        const sourceRows = purchaseOrderIds
+            .filter(isPurchaseOrder)
+            .reduce(function (rows, purchaseOrderId) {
+                return rows.concat(InstallmentPrevisionModel.getByTransactionId(purchaseOrderId));
+            }, []);
 
         if (isNullOrEmpty(sourceRows)) {
             return;
@@ -48,7 +52,7 @@ define([
         log.audit({
             title: 'CopyInstallmentPrevisions | execute - success',
             details: JSON.stringify({
-                purchaseOrderId: purchaseOrderId,
+                purchaseOrderIds: purchaseOrderIds,
                 vendorBillId: vendorBillId,
                 found: sourceRows.length,
                 copied: copiedCount,
@@ -77,8 +81,9 @@ define([
     }
 
     /**
-     * Confirma que a transação de origem (createdfrom) é de fato uma Purchase Order,
-     * não outro tipo de transação nativa.
+     * Confirma que a transação de origem identificada (sublist purchaseorders ou o
+     * fallback createdfrom) é de fato uma Purchase Order, não outro tipo de transação
+     * nativa.
      * @param {string|number} transactionId
      * @returns {boolean}
      */

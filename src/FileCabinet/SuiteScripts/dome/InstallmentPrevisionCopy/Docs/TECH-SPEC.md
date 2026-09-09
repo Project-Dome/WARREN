@@ -24,16 +24,31 @@ independente por fatura, sem alterar os registros originais vinculados ao PO.
 **Contexto de execução:** roda apenas em `context.type === CREATE`. Ignorado em qualquer
 outro evento (`EDIT`, `DELETE`, etc.).
 
-**Identificação do PO de origem:** lida a partir do sublist nativo `purchaseorders` da
-Vendor Bill recém-criada (campo `id` da primeira linha). Cenário observado sempre 1 PO por
-fatura (sublist com uma única linha). O campo nativo `createdfrom` é usado apenas como
-fallback defensivo, caso o sublist `purchaseorders` esteja vazio. Se nenhuma das duas
-fontes apontar para uma Purchase Order, o script **não faz nada** (fatura sem PO de
+**Identificação do(s) PO(s) de origem:** lida a partir do sublist nativo `purchaseorders` da
+Vendor Bill recém-criada — **todas** as linhas (campo `id` de cada linha), não apenas a
+primeira. Uma Vendor Bill pode ter mais de uma PO relacionada; cada PO identificada é
+processada individualmente, sempre levando em consideração o que consta em cada PO (suas
+próprias previsões). O campo nativo `createdfrom` é usado apenas como fallback defensivo,
+caso o sublist `purchaseorders` esteja vazio — e somente quando `createdfrom` apontar para
+uma transação do tipo Purchase Order (evita usar por engano a transação de origem quando
+esta não é uma PO, ver nota sobre Recebimento de Item abaixo). Se nenhuma das duas fontes
+apontar para uma ou mais Purchase Orders, o script **não faz nada** (fatura sem PO de
 origem, fora de escopo desta regra).
 
-**Busca dos registros de origem:** todos os registros de `customrecord_wr_installment_prevision`
-cujo campo `custrecord_wr_ip_transaction_ls` seja igual ao PO identificado. Se a busca não
-retornar nenhum registro, o script não faz nada (sem erro).
+**Nota sobre Recebimento de Item:** hoje, no fluxo do Warren, a Vendor Bill não é criada a
+partir de um Recebimento de Item (Item Receipt) — é sempre criada diretamente a partir da
+PO. Esse cenário pode passar a ocorrer no futuro. Quando isso acontecer, o sublist nativo
+`purchaseorders` da Vendor Bill continua populado com a(s) PO(s) de origem (preenchido pelo
+NetSuite independentemente do caminho ser PO → Item Receipt → Bill ou PO → Bill direto),
+portanto a identificação primária por esse sublist continua funcionando sem alteração. O
+único ponto de atenção é o fallback via `createdfrom`: nesse cenário ele apontaria para o
+Item Receipt, não para a PO — por isso o fallback valida o tipo da transação antes de
+usá-la.
+
+**Busca dos registros de origem:** para cada PO identificada, todos os registros de
+`customrecord_wr_installment_prevision` cujo campo `custrecord_wr_ip_transaction_ls` seja
+igual a essa PO. O resultado final é a união das previsões de todas as POs da fatura. Se a
+busca não retornar nenhum registro (em nenhuma das POs), o script não faz nada (sem erro).
 
 **Cópia:** para cada registro de previsão encontrado, cria um **novo** registro
 `customrecord_wr_installment_prevision`, copiando os campos:
@@ -66,9 +81,6 @@ falha isolada não interrompe o processamento das demais cópias nem afeta a Ven
 salva (o `afterSubmit` roda após o commit da transação).
 
 **Fora de escopo:**
-- Vendor Bill originada de múltiplos POs simultaneamente (sublist nativo `purchaseorders`
-  com mais de uma linha) — no fluxo atual do Warren, o sublist sempre tem uma única linha;
-  múltiplos POs numa mesma fatura não são tratados por esta regra.
 - Deduplicação de cópias entre faturamentos parciais do mesmo PO.
 - Alteração do registro original de previsão (vinculado ao PO) — a cópia nunca escreve no
   registro de origem.
